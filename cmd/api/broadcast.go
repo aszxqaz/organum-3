@@ -1,15 +1,20 @@
 package main
 
-import "organum/internal/domain"
+import (
+	"encoding/json"
+	"log/slog"
+	"organum/internal/domain"
+)
 
-type WsModelBroadcast struct {
-	Method string            `json:"method"`
-	Model  *domain.ModelJSON `json:"model"`
-}
-
-func NewWsModelBroadcast(model *domain.ModelJSON) *WsModelBroadcast {
-	return &WsModelBroadcast{
-		Method: "model",
-		Model:  model,
+func (app *application) broadcast(session *domain.Session, roomID string, v any) {
+	msessions := app.store.GetMSessionsForRoom(roomID)
+	if len(msessions) > 0 {
+		msg, _ := json.Marshal(v)
+		for _, msession := range msessions {
+			if msession.SessionID != session.ID {
+				slog.Info("Broadcasting...", "roomID", roomID, "sessionID", msession.SessionID, "message", string(msg))
+				msession.Melody.Write(msg)
+			}
+		}
 	}
 }

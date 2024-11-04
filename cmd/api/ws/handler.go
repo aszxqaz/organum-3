@@ -24,6 +24,8 @@ func (h *WsHandler) HandleConnect(s *melody.Session) {
 func (h *WsHandler) HandleDisconnect(s *melody.Session) {
 	if session, ok := s.Get("session"); ok {
 		if session, ok := session.(*domain.Session); ok && session != nil {
+			slog.Info(fmt.Sprintf("Session id %s disconnected", session.ID))
+			h.store.LeaveAllRooms(session)
 			h.store.DeleteWsSession(session)
 		}
 	}

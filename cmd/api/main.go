@@ -4,6 +4,7 @@ import (
 	"organum/internal/jsonlog"
 	"organum/internal/store"
 	"os"
+	"time"
 
 	"github.com/olahol/melody"
 )
@@ -25,11 +26,15 @@ func main() {
 	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
 	store := store.NewStore()
 
+	m := melody.New()
+	m.Config.PingPeriod = time.Hour * 24
+	m.Config.PongWait = time.Hour * 24
+
 	app := &application{
 		config,
 		logger,
 		store,
-		melody.New(),
+		m,
 	}
 
 	err := app.serve()

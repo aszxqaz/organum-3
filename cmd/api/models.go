@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"organum/internal/domain"
@@ -33,14 +32,6 @@ func (app *application) postModelHandler(w http.ResponseWriter, r *http.Request)
 
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, domain.NewModelJSON(model))
-
-	msessions := app.store.GetMSessionsForRoom(model.RoomID)
-	if len(msessions) > 0 {
-		msg, _ := json.Marshal(NewWsModelBroadcast(domain.NewModelJSON(model)))
-		for _, msession := range msessions {
-			msession.Melody.Write(msg)
-		}
-	}
 }
 
 func (app *application) getModelsHandler(w http.ResponseWriter, r *http.Request) {

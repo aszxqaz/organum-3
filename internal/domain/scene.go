@@ -12,6 +12,7 @@ type Scene struct {
 	Transform Transform `json:"transform"`
 	Checksum  string    `json:"checksum"`
 	Objects   []*Object `json:"objects"`
+	IsJoined  bool      `json:"isJoined"`
 }
 
 func (s *Scene) SetTransform(t Transform) {

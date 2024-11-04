@@ -9,6 +9,23 @@ var (
 	ErrSessionNotInRoom = errors.New("session not in room")
 )
 
+func (s *Store) LeaveAllRooms(session *domain.Session) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	joins := s.roomsSessions.ValuesWhere(
+		func(k string, v *domain.RoomSession) bool {
+			return v.SessionID == session.ID
+		},
+	)
+
+	for _, join := range joins {
+		s.leaveRoomUnsafe(session, join.RoomID)
+	}
+
+	return nil
+}
+
 func (s *Store) LeaveRoom(session *domain.Session, roomID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -38,12 +55,13 @@ func (s *Store) leaveRoomUnsafe(session *domain.Session, roomID string) {
 		},
 	)
 
-	if rs := s.roomsSessions.ValuesWhere(
-		func(k string, v *domain.RoomSession) bool {
-			return v.RoomID == roomID
-		},
-	); len(rs) == 0 {
-		s.models.DeleteWhere(func(k string, v *domain.Model) bool { return v.RoomID == roomID })
-		s.rooms.Delete(roomID)
-	}
+	// if rs := s.roomsSessions.ValuesWhere(
+	// 	func(k string, v *domain.RoomSession) bool {
+	// 		return v.RoomID == roomID
+	// 	},
+	// ); len(rs) == 0 {
+	// 	s.models.DeleteWhere(func(k string, v *domain.Model) bool { return v.RoomID == roomID })
+	// 	s.rooms.Delete(roomID)
+	// 	slog.Info("Room deleted")
+	// }
 }

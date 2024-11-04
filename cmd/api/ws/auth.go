@@ -37,12 +37,12 @@ func NewAuthWsResponseError(err error) AuthWsResponse {
 func (h *WsHandler) handleAuthWsRequest(s *melody.Session, r AuthWsRequest) {
 	session, err := h.store.GetSessionByToken(r.Token)
 	if err != nil {
-		h.respondJSON(s, NewAuthWsResponseError(err))
+		// h.respondJSON(s, NewAuthWsResponseError(err))
 		return
 	}
 
 	h.store.CreateWsSession(session, s)
 	s.Set("session", session)
 
-	h.respondJSON(s, NewAuthWsResponseSuccess())
+	// h.respondJSON(s, NewAuthWsResponseSuccess())
 }

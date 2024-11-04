@@ -6,6 +6,7 @@ import (
 )
 
 var ErrRoomNotLocked = errors.New("room not locked")
+var ErrModelNotUploaded = errors.New("model not uploaded")
 
 func (s *Store) AddScene(session *domain.Session, roomID string, scene *domain.Scene) error {
 	s.mu.Lock()
@@ -14,6 +15,11 @@ func (s *Store) AddScene(session *domain.Session, roomID string, scene *domain.S
 	room, ok := s.rooms.Get(roomID)
 	if !ok {
 		return ErrRoomNotFound
+	}
+
+	_, ok = s.models.Get(scene.Checksum)
+	if !ok {
+		return ErrModelNotUploaded
 	}
 
 	_, ok = s.roomsSessions.FirstWhere(

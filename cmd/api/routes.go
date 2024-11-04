@@ -5,10 +5,13 @@ import (
 	"organum/cmd/api/ws"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 func (app *application) routes() http.Handler {
 	r := chi.NewRouter()
+
+	r.Use(middleware.Logger)
 
 	r.Get("/models", app.getModelsHandler)
 	r.Post("/models", app.requireAuth(app.postModelHandler))
@@ -31,6 +34,8 @@ func (app *application) routes() http.Handler {
 	r.Delete("/rooms/{roomID}/sessions", app.requireAuth(app.leaveRoomHandler))
 
 	r.Post("/rooms/{roomID}/scenes", app.requireAuth(app.postSceneHandler))
+	r.Post("/rooms/{roomID}/scenes/{checksum}/join", app.requireAuth(app.joinSceneHandler))
+	r.Delete("/rooms/{roomID}/scenes/{checksum}/join", app.requireAuth(app.unjoinSceneHandler))
 
 	wsHandler := ws.NewWsHandler(app.store)
 

@@ -1,14 +1,19 @@
 package domain
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type Room struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 	// Users    []string `json:"users"`
-	Scenes      []*Scene `json:"scenes"`
-	OwnerID     string   `json:"ownerId"`
-	LockOwnerID string   `json:"lockOwnerId"`
+	Scenes      []*Scene  `json:"scenes"`
+	OwnerID     string    `json:"ownerId"`
+	LockOwnerID string    `json:"lockOwnerId"`
+	CreatedAt   time.Time `json:"createdAt"`
 }
 
 // func (r *Room) Join(userId string) *errors.Error {
@@ -40,5 +45,6 @@ func NewRoom(sessionID string) *Room {
 		Scenes:      []*Scene{},
 		OwnerID:     sessionID,
 		LockOwnerID: sessionID,
+		CreatedAt:   time.Now(),
 	}
 }

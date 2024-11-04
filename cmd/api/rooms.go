@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"organum/internal/domain"
 	"organum/internal/store"
+	"sort"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
@@ -12,6 +13,7 @@ import (
 
 func (app *application) getRoomsHandler(w http.ResponseWriter, r *http.Request) {
 	rooms := app.store.GetRooms()
+	sort.Slice(rooms, func(i, j int) bool { return rooms[i].CreatedAt.After(rooms[j].CreatedAt) })
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, rooms)
 }
@@ -175,6 +177,8 @@ func (app *application) postLockHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	render.Status(r, http.StatusOK)
+
+	app.broadcast(session, roomID, NewWsBroadcastLock(session, roomID, session.ID))
 }
 
 func (app *application) deleteLockHandler(w http.ResponseWriter, r *http.Request) {
@@ -204,6 +208,8 @@ func (app *application) deleteLockHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	render.Status(r, http.StatusOK)
+
+	app.broadcast(session, roomID, NewWsBroadcastLock(session, roomID, ""))
 }
 
 type PostSceneRequest struct {
@@ -213,6 +219,9 @@ type PostSceneRequest struct {
 // Bind implements render.Binder.
 func (p *PostSceneRequest) Bind(r *http.Request) error {
 	return nil
+}
+
+type ToggleJoinedSceneRequest struct {
 }
 
 func (app *application) postSceneHandler(w http.ResponseWriter, r *http.Request) {
@@ -231,6 +240,10 @@ func (app *application) postSceneHandler(w http.ResponseWriter, r *http.Request)
 			app.respondNotFound(w, r, err)
 			return
 		}
+		if errors.Is(err, store.ErrModelNotUploaded) {
+			app.respondBadRequest(w, r, err)
+			return
+		}
 		if errors.Is(err, store.ErrSessionNotInRoom) {
 			app.respondForbidden(w, r, err)
 			return
@@ -244,4 +257,86 @@ func (app *application) postSceneHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	render.Status(r, http.StatusCreated)
+
+	app.broadcast(session, roomID, NewWsBroadcastScene(session, roomID, &req.Scene))
+}
+
+func (app *application) joinSceneHandler(w http.ResponseWriter, r *http.Request) {
+	session := app.getSessionOrRespondError(w, r)
+	if session == nil {
+		return
+	}
+
+	roomID := chi.URLParam(r, "roomID")
+	checksum := chi.URLParam(r, "checksum")
+
+	err := app.store.ToggleJoined(session, roomID, checksum, true)
+	if err != nil {
+		if errors.Is(err, store.ErrRoomNotFound) || errors.Is(err, store.ErrSceneNotFound) {
+			app.respondNotFound(w, r, err)
+			return
+		}
+		if errors.Is(err, store.ErrSessionNotInRoom) {
+			app.respondForbidden(w, r, err)
+			return
+		}
+		if errors.Is(err, store.ErrRoomNotLocked) {
+			app.respondConflict(w, r, err)
+			return
+		}
+		if errors.Is(err, store.ErrRoomLockedByOther) {
+			app.respondConflict(w, r, err)
+			return
+		}
+		if errors.Is(err, store.ErrSceneAlreadyJoined) || errors.Is(err, store.ErrSceneNotMultiobject) {
+			app.respondBadRequest(w, r, err)
+			return
+		}
+		app.respondInternalError(w, r, err)
+		return
+	}
+
+	render.Status(r, http.StatusOK)
+
+	app.broadcast(session, roomID, NewWsBroadcastToggleJoinedScene(session, roomID, checksum, true))
+}
+
+func (app *application) unjoinSceneHandler(w http.ResponseWriter, r *http.Request) {
+	session := app.getSessionOrRespondError(w, r)
+	if session == nil {
+		return
+	}
+
+	roomID := chi.URLParam(r, "roomID")
+	checksum := chi.URLParam(r, "checksum")
+
+	err := app.store.ToggleJoined(session, roomID, checksum, false)
+	if err != nil {
+		if errors.Is(err, store.ErrRoomNotFound) || errors.Is(err, store.ErrSceneNotFound) {
+			app.respondNotFound(w, r, err)
+			return
+		}
+		if errors.Is(err, store.ErrSessionNotInRoom) {
+			app.respondForbidden(w, r, err)
+			return
+		}
+		if errors.Is(err, store.ErrRoomNotLocked) {
+			app.respondConflict(w, r, err)
+			return
+		}
+		if errors.Is(err, store.ErrRoomLockedByOther) {
+			app.respondConflict(w, r, err)
+			return
+		}
+		if errors.Is(err, store.ErrSceneAlreadyUnjoined) || errors.Is(err, store.ErrSceneNotMultiobject) {
+			app.respondBadRequest(w, r, err)
+			return
+		}
+		app.respondInternalError(w, r, err)
+		return
+	}
+
+	render.Status(r, http.StatusOK)
+
+	app.broadcast(session, roomID, NewWsBroadcastToggleJoinedScene(session, roomID, checksum, false))
 }
